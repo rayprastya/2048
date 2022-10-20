@@ -162,7 +162,7 @@ class StatusBar(tk.Frame):
 		self.new_game_button = tk.Button(
         	        master=frame3,
         	        text="New Game",
-        	        command = self.callback,
+        	        command = self.set_callback,
         	        # width=5,
                     # height=2
 					)
@@ -172,7 +172,7 @@ class StatusBar(tk.Frame):
 		self.undo_button = tk.Button(
         	        master=frame3,
         	        text="Undo Move",
-        	        command = self.callback,
+        	        command = self.set_callback,
 					)
 
 		self.undo_button.pack(side="top")
@@ -313,8 +313,9 @@ class Game:
 		move_command = ["w","a","s","d"]
 		if event.keysym in move_command:
 			movement = self.model.attempt_move(event.keysym)
+			self.draw()
 			if movement == True:
-				self.game_grid.after(NEW_TILE_DELAY, self.new_tile())
+				self.master.after(NEW_TILE_DELAY, self.new_tile())
 				
 	def new_tile(self):
 		self.model.add_tile()  
