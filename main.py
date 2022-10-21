@@ -1,4 +1,6 @@
 import tkinter as tk
+from tkinter import messagebox
+
 
 # You may import any submodules of tkinter here if you wish
 # You may also import anything from the typing module
@@ -12,6 +14,8 @@ class Model:
 		self.new_game()
 		self.score = 0
 		self.undos = MAX_UNDOS
+		self.prev_tiles = []
+		self.prev_score = []
 
 	def new_game(self):
 		self.tiles = [[None,None,None,None],
@@ -29,14 +33,6 @@ class Model:
 		temp = generate_tile(self.tiles)
 		position, value = temp 
 		self.tiles[position[0]][position[1]] = value
-		# a = random.randint(0, len(self.tiles)-1)
-		# b = random.randint(0, len(self.tiles)-1)
-		# while self.tiles[a][b] != None:
-		# 	a = random.randint(0, len(self.tiles)-1)
-		# 	b = random.randint(0, len(self.tiles)-1)
-		# mat[a][b] = 2
-		# return mat
-		# generate_tile(self.tiles[a][b])
 
 	def move_left(self):
 		self.tiles = stack_left(self.tiles)
@@ -45,29 +41,24 @@ class Model:
 		self.tiles = merging[0]
 		self.tiles = stack_left(self.tiles)
 		# self.add_tile()
-		print("move left",self.tiles)
 	
 	def move_right(self):
 		self.tiles = reverse(self.tiles)
 		self.move_left()
 		self.tiles = reverse(self.tiles)
-		print("move right",self.tiles)
 
 	def move_up(self):
 		self.tiles = transpose(self.tiles)
 		self.move_left()
 		self.tiles = transpose(self.tiles)
-		print("move up",self.tiles)
 
 	def move_down(self):
 		self.tiles = transpose(self.tiles)
 		self.move_right()
 		self.tiles = transpose(self.tiles)
-		print("move down",self.tiles)
 
 	def attempt_move(self, move):
-		temp_tiles = self.tiles
-
+		prev = self.tiles
 		if move == UP:
 			self.move_up()
 		elif move == LEFT:
@@ -77,7 +68,7 @@ class Model:
 		elif move == RIGHT:
 			self.move_right()
 		
-		if temp_tiles == self.tiles:
+		if prev == self.tiles:
 			return False
 		else:
 			return True
@@ -85,60 +76,75 @@ class Model:
 	def get_score(self):
 		return self.score
 
-	def get_undos(self):
+	def get_undos_remaining(self):
 		return self.undos
 
 	def use_undo(self):
-		pass
+		self.tiles = self.prev_tiles
 
 	def has_won(self):
-		pass 
+		for column in range(NUM_COLS):
+			for row in range(NUM_ROWS):
+				tile = self.tiles[column][row]
+				if tile == 2048:
+					return True
+		
+		return False
 
 	def has_lost(self):
-		pass
+		board = self.tiles
+		score = self.score
+		key = ["w","a","s","d"]
+		for i in key:
+			move_output = self.attempt_move(i)
+			if move_output == True:
+				self.tiles = board
+				self.score = score
+				return False
+		self.tiles = board
+		self.score = score
+		return True
 
 
 class StatusBar(tk.Frame):
 	def __init__(self,master,**kwargs):
 		tk.Frame.__init__(self,
 		master)
-		frame1 = tk.Frame(master,bg=BACKGROUND_COLOUR,width=100,height=60)
-		frame1.pack(side="left", pady=20,padx=20)
+		frame1 = tk.Frame(self,bg=BACKGROUND_COLOUR,width=50,height=60)
+		frame1.pack(side="left", pady=10,padx=10)
 
 		t = tk.Label(
         	        master=frame1,
         	        text="SCORE",
         	        bg=BACKGROUND_COLOUR,
-					fg=LIGHT,
+					fg=COLOURS[None],
         	        justify=tk.CENTER,
-        	        font=('Arial bold', 25),
-        	        # width=5,
-                    # height=2
+        	        font=('Arial bold', 20),
 					)
 
 		t.pack(side="top")
 		
 		self.score_text = tk.Label(
         	        master=frame1,
-        	        text=0,
+        	        text="0",
         	        bg=BACKGROUND_COLOUR,
 					fg=LIGHT,
         	        justify=tk.CENTER,
-        	        font=('Arial bold', 25),
+        	        font=('Arial bold', 15),
 					)
 
 		self.score_text.pack(side="top")
 		# Frame 2
-		frame2 = tk.Frame(master,bg=BACKGROUND_COLOUR,width=100,height=60)
-		frame2.pack(side="left", pady=20,padx=20)
+		frame2 = tk.Frame(self,bg=BACKGROUND_COLOUR,width=50,height=60)
+		frame2.pack(side="left", pady=10,padx=10)
 
 		t1 = tk.Label(
         	        master=frame2,
         	        text="UNDOS",
         	        bg=BACKGROUND_COLOUR,
-					fg=LIGHT,
+					fg=COLOURS[None],
         	        justify=tk.CENTER,
-        	        font=('Arial bold', 25),
+        	        font=('Arial bold', 20),
         	        # width=5,
                     # height=2
 					)
@@ -147,22 +153,21 @@ class StatusBar(tk.Frame):
 		
 		self.undo_text = tk.Label(
         	        master=frame2,
-        	        text=0,
+        	        text=MAX_UNDOS,
         	        bg=BACKGROUND_COLOUR,
 					fg=LIGHT,
         	        justify=tk.CENTER,
-        	        font=('Arial bold', 25),
+        	        font=('Arial bold', 15),
 					)
 
 		self.undo_text.pack(side="top")
 
-		frame3 = tk.Frame(master,bg="white",width=100,height=60)
-		frame3.pack(side="left", pady=20,padx=20)
+		# frame3 = tk.Frame(master,bg="white",width=50,height=60)
+		# frame3.pack(side="left", pady=20,padx=20)
 
 		self.new_game_button = tk.Button(
-        	        master=frame3,
+        	        master=self,
         	        text="New Game",
-        	        command = self.set_callback,
         	        # width=5,
                     # height=2
 					)
@@ -170,18 +175,21 @@ class StatusBar(tk.Frame):
 		self.new_game_button.pack(side="top", pady=10)
 		
 		self.undo_button = tk.Button(
-        	        master=frame3,
+        	        master=self,
         	        text="Undo Move",
-        	        command = self.set_callback,
 					)
 
 		self.undo_button.pack(side="top")
 
 
 	def redraw_infos(self, score, undos):
-		pass
-	def set_callback(self, new_game_command, undo_command):
-		pass
+		self.score_text.config(text=score)
+		self.undo_text.config(text=undos)
+
+	def set_callbacks(self, new_game_command, undo_command):
+		self.undo_button.config(command=undo_command)
+		self.new_game_button.config(command=new_game_command)
+		
 
 class GameGrid(tk.Canvas):
 	def __init__(self,master,**kwargs):
@@ -189,18 +197,10 @@ class GameGrid(tk.Canvas):
 		master,
 		background = BACKGROUND_COLOUR, 
 		width = BOARD_WIDTH,
-		height = BOARD_HEIGHT)
-
-		# master.geometry('400x400')
-		# self.model = Model()
-		# self.model_tiles = self.model.get_tiles()
+		height = BOARD_HEIGHT
+		)
 		self.square = {}
-		# self.canvas = tk.Canvas(master, )
-		
-		# self.create_rectangle(fill=BACKGROUND_COLOUR)
-		# self.rect = self.create_rectangle(0, 0, 400, 400, fill='red')
-		# self.redraw(self.model_tiles)
-	
+
 	def _get_bbox(self,position):
 		column, row = position
 		x_min = row * 100 + BUFFER
@@ -225,28 +225,6 @@ class GameGrid(tk.Canvas):
 		self.clear()
 		for column in range(NUM_COLS):
 			for row in range(NUM_ROWS):
-				# cell = tk.Frame(
-        	    #     self,
-        	    #     bg=COLOURS[None],
-        	    #     width=BOARD_WIDTH / NUM_COLS,
-        	    #     height=BOARD_HEIGHT / NUM_COLS
-        	    # )
-				# cell.grid(
-        	    #     row=i,
-        	    #     column=j,
-        	    #     padx=BUFFER,
-        	    #     pady=BUFFER
-        	    # )
-				# t = tk.Label(
-        	    #     master=cell,
-        	    #     text="",
-        	    #     bg=COLOURS[None],
-        	    #     justify=tk.CENTER,
-        	    #     font=TILE_FONT,
-        	    #     width=5,
-                #     height=2
-				# 	)
-				# t.grid()
 				tile = tiles[column][row]
 				if tile == None:
 					bg_color = COLOURS[None]
@@ -266,21 +244,6 @@ class GameGrid(tk.Canvas):
 					text_box = self._get_midpoint((column,row))
 					x, y = text_box
 					self.create_text(x, y, font=TILE_FONT, fill=font_color, text=text)
-				
-			# self.grid_cells.append(grid_row)
-		
-		# for i in range(NUM_ROWS):
-		# 	for j in range(NUM_COLS):
-		# 		# self.redraw(self.model_tiles[i][j])
-				
-		# 		if tile == None:
-		# 			self.grid_cells[i][j].configure(text="",bg=COLOURS[None])
-		# 		else:
-		# 			self.grid_cells[i][j].configure(
-		# 				text=str(tile),
-		# 				bg=COLOURS[tile],
-		# 				fg=FG_COLOURS[tile]
-		# 			)
 
 class Game:
 	def __init__(self,master):
@@ -301,31 +264,62 @@ class Game:
 		self.game_grid = GameGrid(self.master)
 		self.game_grid.pack(side="top", fill="both", expand="false")
 		self.master.bind("<Key>",self.attempt_move)
-		self.draw()
 		self.statusbar = StatusBar(self.master)
 		self.statusbar.pack(side="top")
+		self.statusbar.set_callbacks(self.start_new_game, self.undo_previous_move)
+		self.draw()
 		# master.pack()
 		
 	def draw(self):
 		self.game_grid.redraw(self.model.get_tiles())
-
+		
 	def attempt_move(self, event):
 		move_command = ["w","a","s","d"]
 		if event.keysym in move_command:
+			if len(self.model.prev_tiles) == 3:
+				self.model.prev_tiles.pop()
+			if len(self.model.prev_score) == 3:
+				self.model.prev_score.pop()
+			self.model.prev_tiles.insert(0, self.model.tiles)
+			self.model.prev_score.insert(0, self.model.get_score())
 			movement = self.model.attempt_move(event.keysym)
 			self.draw()
-			if movement == True:
-				self.master.after(NEW_TILE_DELAY, self.new_tile())
+			won = self.model.has_won()
+			if won:
+				messagebox.askquestion(
+					title=None,
+					message= WIN_MESSAGE)
+			else:
+				self.statusbar.redraw_infos(self.model.get_score(), self.model.get_undos_remaining())
+				if movement == True:
+					self.master.after(NEW_TILE_DELAY, self.new_tile)
 				
 	def new_tile(self):
-		self.model.add_tile()  
+		self.model.add_tile()
 		self.draw()
-
+		lose = self.model.has_lost()
+		if lose:
+			messagebox.askquestion(
+				title=None,
+				message= LOSS_MESSAGE)
+		
 	def undo_previous_move(self):
-		pass 
+		get_undo = self.model.get_undos_remaining()
+		if len(self.model.prev_tiles) >= 1 and get_undo >= 1: 
+			undo = self.model.prev_tiles
+			score = self.model.prev_score
+			self.model.tiles = undo[0]
+			self.model.prev_tiles.pop(0)
+			self.model.score = score[0]
+			self.model.prev_score.pop(0)
+			self.model.undos -= 1
+			self.draw()
+			self.statusbar.redraw_infos(self.model.get_score(), self.model.get_undos_remaining())
 
 	def start_new_game(self):
-		pass
+		self.model = Model()
+		self.draw()
+		self.statusbar.redraw_infos(self.model.get_score(), self.model.get_undos_remaining())
 
 
 def play_game(root):
@@ -337,3 +331,6 @@ if __name__ == '__main__':
 	root = tk.Tk()
 	play_game(root)
 	root.mainloop()
+
+
+
